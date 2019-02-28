@@ -3,6 +3,7 @@ from __future__ import absolute_import, print_function, division
 import tensorflow as tf
 import numpy as np
 import argparse
+import os
 from scipy.io import wavfile
 
 
@@ -40,6 +41,8 @@ def feature_extraction_fullnsynth(directory, write_directory):
 
         # Compute a stabilized log to get log-magnitude mel-scale spectrograms.
         log_mel_spectrograms = tf.log(mel_spectrograms + 1e-6)
+        print(log_mel_spectrograms.shape)
+
 
     # The word_list is the list of instrument families you are interested in
     word_list = ['bass', 'brass', 'flute', 'guitar', 'keyboard', 'mallet', 'organ', 'reed', 'string', 'synth_lead',
@@ -92,7 +95,8 @@ def feature_extraction_fullnsynth(directory, write_directory):
 
                     # Compute log mel spectrogram of the audio
                     spec = sess.run([log_mel_spectrograms], feed_dict={pcm: x})
-
+                    print("spec:")
+                    print(len(spec))
                     # Prepare the data to store as a tfrecord file
                     spec = np.asarray(spec, np.float32)
                     spec = np.squeeze(spec)
