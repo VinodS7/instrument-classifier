@@ -3,7 +3,7 @@ import tensorflow as tf
 from keras import backend as K
 from keras.models import Model
 from keras.layers import Conv2D, BatchNormalization, MaxPooling2D, Flatten, Dense
-from keras.layers import Input, Dropout, Add
+from keras.layers import Input, Dropout, Concatenate
 from keras.layers.advanced_activations import ELU
 from keras.callbacks import ModelCheckpoint, EarlyStopping, LearningRateScheduler
 from keras.optimizers import SGD
@@ -63,7 +63,7 @@ def build_model():
             x = Flatten(name=str(n_i)+'_'+str(m_i)+'_'+'flatten')(x)
             model_layers.append(x)
 
-    x = Add()(model_layers, mode='concat', concat_axis=channel_axis)
+    x = Concatenate(axis=channel_axis)(model_layers)
     x = Dropout(0.5)(x)
     x = Dense(N_CLASSES, kernel_initializer='he_normal', kernel_regularizer=l2(1e-5), activation='softmax', name='prediction')(x)
     model = Model(melgram_input, x)
