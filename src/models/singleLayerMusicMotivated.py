@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from keras import backend as K
 from keras.models import Model
-from keras.layers import Conv2D, BatchNormalization, MaxPooling2D, Flatten, Dense
+from keras.layers import Convolution2D, BatchNormalization, MaxPooling2D, Flatten, Dense
 from keras.layers import Input, Dropout, concatenate
 from keras.layers.advanced_activations import ELU
 from keras.callbacks import ModelCheckpoint, EarlyStopping, LearningRateScheduler
@@ -35,7 +35,7 @@ init_lr = 0.001
 
 def build_model():
 
-    if K.image_data_format() == 'th':
+    if K.image_dim_ordering() == 'th':
         input_shape = (1, N_MEL_BANDS, SEGMENT_DUR)
         channel_axis = 1
     else:
@@ -43,29 +43,29 @@ def build_model():
         channel_axis = 3
     melgram_input = Input(shape=input_shape)
 
+
     m_sizes = [50, 70]
     n_sizes = [1, 3, 5]
     n_filters = [128, 64, 32]
     maxpool_const = 4
-
-    model_layers = list()
+    maxpool_size = int(SEGMENT_DUR/maxpool_const)
+    layers = list()
 
     for m_i in m_sizes:
         for i, n_i in enumerate(n_sizes):
-            x = Conv2D(n_filters[i], (m_i, n_i),
-                              padding='same',
-                              kernel_initializer='he_normal',
-                              kernel_regularizer=l2(1e-5),
+            x = Convolution2D(m_i, n_i, n_filters[i],
+                              border_mode='same',
+                              init='he_normal',
+                              W_regularizer=l2(1e-5),
                               name=str(n_i)+'_'+str(m_i)+'_'+'conv')(melgram_input)
-            x = BatchNormalization(axis=channel_axis, name=str(n_i)+'_'+str(m_i)+'_'+'bn')(x)
+            x = BatchNormalization(axis=channel_axis, mode=0, name=str(n_i)+'_'+str(m_i)+'_'+'bn')(x)
             x = ELU()(x)
-            x = MaxPooling2D(pool_size=(N_MEL_BANDS, SEGMENT_DUR/maxpool_const), name=str(n_i)+'_'+str(m_i)+'_'+'pool')(x)
+            x = MaxPooling2D(pool_size=(N_MEL_BANDS, maxpool_size), name=str(n_i)+'_'+str(m_i)+'_'+'pool')(x)
             x = Flatten(name=str(n_i)+'_'+str(m_i)+'_'+'flatten')(x)
-            model_layers.append(x)
-
-    x = concatenate(model_layers)
+            layers.append(x)
+    x = concatenate(layers)
     x = Dropout(0.5)(x)
-    x = Dense(N_CLASSES, kernel_initializer='he_normal', kernel_regularizer=l2(1e-5), activation='softmax', name='prediction')(x)
+    x = Dense(N_CLASSES, init='he_normal', W_regularizer=l2(1e-5), activation='softmax', name='prediction')(x)
     model = Model(melgram_input, x)
     return model
 
@@ -93,13 +93,10 @@ def train(train_dir,val_dir):
 
 
     history = model.fit(train_dataset,
-                                  samples_per_epoch=289205,
                                   epochs=MAX_EPOCH_NUM,
                                   verbose=2,
                                   callbacks=[save_clb, early_stopping, lrs],
-                                  validation_data=val_dataset,
-                                  class_weight=None,
-                                  nb_worker=1)
+                                  validation_data=val_dataset)
 
     print(history)
 
